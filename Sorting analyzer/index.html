@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sorting Analyzer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    h1 { color: #333; }
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      width: 500px;
+      text-align: center;
+    }
+    input, select, button {
+      margin: 10px 0;
+      padding: 10px;
+      width: 90%;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover { background: #45a049; }
+    .result {
+      margin-top: 15px;
+      text-align: left;
+      font-size: 14px;
+      background: #f9f9f9;
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid #ddd;
+    }
+    .bars {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      height: 200px;
+      margin-top: 20px;
+      border: 1px solid #ddd;
+      padding: 10px;
+      background: #fff;
+      border-radius: 5px;
+    }
+    .bar {
+      width: 20px;
+      margin: 0 3px;
+      background: #3498db;
+      transition: all 0.3s;
+    }
+    .bar.active {
+      background: #e74c3c;
+    }
+  </style>
+</head>
+<body>
+  <h1>Sorting Analyzer</h1>
+  <div class="container">
+    <input type="text" id="numbers" placeholder="Enter numbers (space/comma separated)">
+    
+    <select id="algorithm">
+      <option value="bubble">Bubble Sort</option>
+      <option value="selection">Selection Sort</option>
+      <option value="insertion">Insertion Sort</option>
+      <option value="quick">Quick Sort</option>
+    </select>
+    
+    <button onclick="startSort()">Analyze</button>
+    
+    <div class="result" id="result"></div>
+    <div class="bars" id="bars"></div>
+  </div>
+
+  <script>
+    // Utility to render bars
+    function renderBars(arr, activeIndexes = []) {
+      let barsDiv = document.getElementById("bars");
+      barsDiv.innerHTML = "";
+      let maxVal = Math.max(...arr);
+      arr.forEach((val, i) => {
+        let bar = document.createElement("div");
+        bar.classList.add("bar");
+        if (activeIndexes.includes(i)) bar.classList.add("active");
+        bar.style.height = (val / maxVal) * 180 + "px";
+        bar.title = val;
+        barsDiv.appendChild(bar);
+      });
+    }
+
+    // Sleep for visualization
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function bubbleSort(arr) {
+      let n = arr.length;
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n - i - 1; j++) {
+          renderBars(arr, [j, j+1]);
+          await sleep(200);
+          if (arr[j] > arr[j+1]) {
+            [arr[j], arr[j+1]] = [arr[j+1], arr[j]];
+            renderBars(arr, [j, j+1]);
+            await sleep(200);
+          }
+        }
+      }
+      return arr;
+    }
+
+    async function selectionSort(arr) {
+      let n = arr.length;
+      for (let i = 0; i < n; i++) {
+        let min = i;
+        for (let j = i+1; j < n; j++) {
+          renderBars(arr, [i, j]);
+          await sleep(200);
+          if (arr[j] < arr[min]) min = j;
+        }
+        [arr[i], arr[min]] = [arr[min], arr[i]];
+      }
+      renderBars(arr);
+      return arr;
+    }
+
+    async function insertionSort(arr) {
+      for (let i = 1; i < arr.length; i++) {
+        let key = arr[i];
+        let j = i - 1;
+        while (j >= 0 && arr[j] > key) {
+          renderBars(arr, [j, j+1]);
+          await sleep(200);
+          arr[j+1] = arr[j];
+          j--;
+        }
+        arr[j+1] = key;
+        renderBars(arr);
+        await sleep(200);
+      }
+      return arr;
+    }
+
+    async function quickSort(arr, left=0, right=arr.length-1) {
+      async function partition(low, high) {
+        let pivot = arr[high];
+        let i = low - 1;
+        for (let j = low; j < high; j++) {
+          renderBars(arr, [j, high]);
+          await sleep(200);
+          if (arr[j] < pivot) {
+            i++;
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+          }
+        }
+        [arr[i+1], arr[high]] = [arr[high], arr[i+1]];
+        return i+1;
+      }
+
+      if (left < right) {
+        let pi = await partition(left, right);
+        await quickSort(arr, left, pi-1);
+        await quickSort(arr, pi+1, right);
+      }
+      renderBars(arr);
+      return arr;
+    }
+
+    async function startSort() {
+      let input = document.getElementById("numbers").value.trim();
+      if (!input) {
+        alert("Please enter numbers!");
+        return;
+      }
+
+      let arr = input.split(/[\s,]+/).map(Number);
+      renderBars(arr);
+
+      let algo = document.getElementById("algorithm").value;
+      let start = performance.now();
+      let sorted;
+
+      if (algo === "bubble") sorted = await bubbleSort([...arr]);
+      else if (algo === "selection") sorted = await selectionSort([...arr]);
+      else if (algo === "insertion") sorted = await insertionSort([...arr]);
+      else sorted = await quickSort([...arr]);
+
+      let end = performance.now();
+
+      document.getElementById("result").innerHTML = `
+        <b>Algorithm:</b> ${algo.charAt(0).toUpperCase() + algo.slice(1)} Sort <br>
+        <b>Original:</b> ${arr.join(", ")} <br>
+        <b>Sorted:</b> ${sorted.join(", ")} <br>
+        <b>Time Taken:</b> ${(end - start).toFixed(2)} ms
+      `;
+    }
+  </script>
+</body>
+</html>
